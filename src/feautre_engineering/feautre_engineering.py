@@ -3,6 +3,9 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.cluster import KMeans
 
 
 class FeautreEngineering:
@@ -142,5 +145,69 @@ class FeautreEngineering:
 
         print("Standardized Data:")
         print(standardized_data.head())
+
+    def woe_default_estimator_proxy(self):
+        """"
+        This function calculates the Weight of Evidence (WOE) estimator for each feature
+        """
+        print("***Calculating the Weight of Evidence (WOE) estimator***")
+
+        # Convert 'TransactionStartTime' to datetime
+        self.data['TransactionStartTime'] = pd.to_datetime(self.data['TransactionStartTime'], errors='coerce')
+        
+        # Today's date for recency calculation
+        today = self.data['TransactionStartTime'].max() + pd.Timedelta(days=1)
+
+        # Aggregate RFMS metrics
+        rfms = self.data.groupby('CustomerId').agg(
+            Recency=('TransactionStartTime', lambda x: (today - x.max()).days),
+            Frequency=('TransactionId', 'count'),
+            Monetary=('Amount', 'sum'),
+        ).reset_index()
+
+        scaler = MinMaxScaler()
+        rfms[['Recency', 'Frequency', 'Monetary']] = scaler.fit_transform(rfms[['Recency', 'Frequency', 'Monetary']])
+
+        # Pair plot to explore RFMS relationships
+        sns.pairplot(rfms, vars=['Recency', 'Frequency', 'Monetary'], diag_kind='kde')
+        plt.show()
+
+        # 3D scatter plot (optional, requires mpl_toolkits.mplot3d)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(rfms['Recency'], rfms['Frequency'], rfms['Monetary'], c='blue', alpha=0.6)
+        ax.set_xlabel('Recency')
+        ax.set_ylabel('Frequency')
+        ax.set_zlabel('Monetary')   
+        plt.show()
+
+        rfms['UserLabel'] = rfms.apply(self.assign_label, axis=1)
+
+        # K-Means clustering
+        kmeans = KMeans(n_clusters=2, random_state=42)
+        rfms['Cluster'] = kmeans.fit_predict(rfms[['Recency', 'Frequency', 'Monetary']])
+
+        # Map clusters to 'Good' and 'Bad'
+        cluster_map = {0: 'Good', 1: 'Bad'}  # Adjust based on RFMS space
+        rfms['UserLabel'] = rfms['Cluster'].map(cluster_map)
+
+        print(rfms['UserLabel'].value_counts())
+        sns.countplot(x='UserLabel', data=rfms)
+        plt.show()
+
+        sns.scatterplot(
+            x='Frequency', y='Monetary', hue='UserLabel', data=rfms, palette='Set1'
+        )
+        plt.show()
+
+    def assign_label(self,row):
+        if row['Recency'] < 0.5 and row['Frequency'] > 0.5 and row['Monetary'] > 0.5:
+            return 'Good'
+        else:
+            return 'Bad'
+
+
+
+
 
 
