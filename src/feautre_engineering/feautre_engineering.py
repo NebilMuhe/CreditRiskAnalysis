@@ -184,7 +184,7 @@ class FeautreEngineering:
             (self.data['Stability'] <= 50)
         ).astype(int)
 
-        return self.data.head()
+        return self.data
 
         # Aggregate RFMS metrics
         # rfms = self.data.groupby('CustomerId').agg(
@@ -227,12 +227,6 @@ class FeautreEngineering:
         #     x='Frequency', y='Monetary', hue='UserLabel', data=rfms, palette='Set1'
         # )
         # plt.show()
-
-    def assign_label(self,row):
-        if row['Recency'] < 0.5 and row['Frequency'] > 0.5 and row['Monetary'] > 0.5:
-            return 'Good'
-        else:
-            return 'Bad'
         
     def woe_estimator(self):
         """"
@@ -292,15 +286,6 @@ class FeautreEngineering:
 
 
 
-class AggregateFeatures:
-    def __init__(self, data):
-        self.data = data
-
-    def customer_level_aggregate_features(self):
-        """"
-        This function calculates the aggregate features for each customer
-        """
-        print("***Calculating the aggregate features for each customer***")
 
 
 
